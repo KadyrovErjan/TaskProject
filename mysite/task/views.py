@@ -2,6 +2,9 @@ from .serializers import *
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
+from .filters import *
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
@@ -51,6 +54,10 @@ class UserProfileDetailAPIView(generics.RetrieveAPIView):
 class TopicListAPIView(generics.ListAPIView):
     queryset = Topic.objects.all()
     serializer_class = TopicSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = TopicFilter
+    search_fields = ['title']
+    # ordering_fields = ['created_date']
 
 class TopicDetailAPIView(generics.RetrieveAPIView):
     queryset = Topic.objects.all()
