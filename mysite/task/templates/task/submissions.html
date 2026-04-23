@@ -1,0 +1,61 @@
+{% extends 'task/base.html' %}
+{% block title %}Решения — PyForge{% endblock %}
+{% block page_title %}{% if user.is_staff %}Все решения{% else %}Мои решения{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--muted)">Всего: {{ submissions|length }}</div>
+    <div style="display:flex;gap:8px">
+      <span class="badge badge-amber">На проверке</span>
+      <span class="badge badge-green">Принято</span>
+      <span class="badge badge-red">Отклонено</span>
+    </div>
+  </div>
+
+  {% if submissions %}
+  <table class="table">
+    <thead>
+      <tr>
+        {% if user.is_staff %}<th>Ученик</th>{% endif %}
+        <th>Задача</th>
+        <th>Статус</th>
+        <th>Дата</th>
+        {% if user.is_staff %}<th>Действие</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for sub in submissions %}
+      <tr>
+        {% if user.is_staff %}<td style="font-weight:500">{{ sub.user.username }}</td>{% endif %}
+        <td>
+          <div style="font-size:13px">{{ sub.task.topic.title }}</div>
+          <div style="font-size:11px;color:var(--hint)">Задача #{{ sub.task.number }}</div>
+        </td>
+        <td>
+          {% if sub.status == 'accepted' %}<span class="badge badge-green">✓ Принято</span>
+          {% elif sub.status == 'rejected' %}<span class="badge badge-red">✗ Отклонено</span>
+          {% else %}<span class="badge badge-amber">⏳ Проверяется</span>{% endif %}
+        </td>
+        <td style="color:var(--hint);font-size:12px">{{ sub.created_at|date:"d.m.Y H:i" }}</td>
+        {% if user.is_staff %}
+        <td>
+          <a href="{% url 'review_submission' sub.id %}" class="btn btn-sm {% if sub.status == 'pending' %}btn-primary{% else %}btn-ghost{% endif %}">
+            {% if sub.status == 'pending' %}Проверить{% else %}Просмотр{% endif %}
+          </a>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state" style="padding:60px">
+    Решений пока нет.
+    {% if not user.is_staff %}
+    <br><a href="{% url 'tasks' %}" class="text-amber" style="margin-top:8px;display:inline-block">Открыть задачи →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

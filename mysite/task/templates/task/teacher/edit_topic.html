@@ -1,0 +1,30 @@
+{% extends 'task/base.html' %}
+{% block title %}Редактировать тему — PyForge{% endblock %}
+{% block page_title %}Редактировать тему{% endblock %}
+{% block content %}
+<div style="margin-bottom:16px"><a href="{% url 'teacher_dashboard' %}" style="font-size:12px;color:var(--muted)">← Панель учителя</a></div>
+<div style="max-width:600px">
+  <div class="card">
+    <div class="card-title"><span class="card-title-icon">✏</span> Редактировать: {{ topic.title }}</div>
+    {% if messages %}{% for msg in messages %}
+    <div class="alert {% if msg.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Название <span style="color:var(--red)">*</span></label>
+        {% if form.title.errors %}<div style="font-size:11px;color:var(--red);margin-bottom:4px">{{ form.title.errors|join:', ' }}</div>{% endif %}
+        {{ form.title }}
+      </div>
+      <div class="form-group">
+        <label class="form-label">Описание</label>
+        {{ form.description }}
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <a href="{% url 'teacher_dashboard' %}" class="btn btn-ghost">Отмена</a>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

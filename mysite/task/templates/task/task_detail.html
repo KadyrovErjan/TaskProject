@@ -1,0 +1,174 @@
+{% extends 'task/base.html' %}
+{% block title %}Задача #{{ task.number }} — PyForge{% endblock %}
+{% block page_title %}{{ task.topic.title }} — Задача #{{ task.number }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.task-layout{display:grid;grid-template-columns:1fr 1fr;gap:20px;height:calc(100vh - 120px)}
+.task-left,.task-right{display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+.editor-wrap{position:relative;flex:1;min-height:300px}
+#code-area{
+  width:100%;height:100%;min-height:360px;
+  background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  padding:16px;font-family:var(--mono);font-size:13px;color:#D4D4D4;
+  resize:vertical;outline:none;line-height:1.8;
+  transition:border-color 0.2s;
+}
+#code-area:focus{border-color:var(--amber)}
+.line-numbers{
+  position:absolute;top:16px;left:0;width:36px;
+  font-family:var(--mono);font-size:13px;color:var(--hint);
+  line-height:1.8;text-align:right;padding-right:8px;
+  pointer-events:none;user-select:none;
+}
+@media(max-width:900px){
+  .task-layout{grid-template-columns:1fr}
+  .task-layout{height:auto}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px">
+  <a href="{% url 'tasks' %}" style="font-size:12px;color:var(--muted)">← Назад к задачам</a>
+</div>
+
+<div class="task-layout">
+  <!-- LEFT: Условие -->
+  <div class="task-left">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <span style="font-size:11px;color:var(--hint);font-family:var(--mono)">{{ task.topic.title }} · #{{ task.number }}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <span class="tag">Python</span>
+        </div>
+      </div>
+
+      <div style="font-size:13px;font-weight:600;margin-bottom:14px;font-size:16px">Условие задачи</div>
+
+      <div style="font-size:14px;line-height:1.8;color:var(--text);white-space:pre-wrap">{{ task.text_ru }}</div>
+
+      {% if task.text_kg %}
+      <div class="divider"></div>
+      <div style="font-size:11px;color:var(--hint);margin-bottom:8px">Кыргызча:</div>
+      <div style="font-size:13px;line-height:1.8;color:var(--muted)">{{ task.text_kg }}</div>
+      {% endif %}
+    </div>
+
+    <!-- Предыдущее решение -->
+    {% if last_submission %}
+    <div class="card">
+      <div class="card-title">
+        <span class="card-title-icon">⏱</span> Моё последнее решение
+        {% if last_submission.status == 'accepted' %}<span class="badge badge-green" style="margin-left:auto">Принято</span>
+        {% elif last_submission.status == 'rejected' %}<span class="badge badge-red" style="margin-left:auto">Отклонено</span>
+        {% else %}<span class="badge badge-amber" style="margin-left:auto">На проверке</span>{% endif %}
+      </div>
+      <div class="code-block">{{ last_submission.code }}</div>
+      {% if last_submission.teacher_comment %}
+      <div style="margin-top:10px;background:var(--bg3);border-left:3px solid var(--amber);padding:10px 14px;border-radius:0 8px 8px 0;border-radius:0">
+        <div style="font-size:11px;color:var(--amber);margin-bottom:4px">Комментарий учителя:</div>
+        <div style="font-size:13px;color:var(--text)">{{ last_submission.teacher_comment }}</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT: Редактор -->
+  <div class="task-right">
+    {% if not user.is_staff %}
+    <div class="card" style="flex:1;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0"><span class="card-title-icon">⌨</span> Твоё решение</div>
+        <select style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--muted);font-size:12px;cursor:pointer">
+          <option>Python 3.11</option>
+        </select>
+      </div>
+
+      {% if success %}
+      <div class="alert alert-success">✓ Решение отправлено! Ожидайте проверки учителя.</div>
+      {% endif %}
+      {% if error %}
+      <div class="alert alert-error">✗ {{ error }}</div>
+      {% endif %}
+
+      <form method="post" style="flex:1;display:flex;flex-direction:column">
+        {% csrf_token %}
+        <div class="editor-wrap" style="flex:1">
+          <textarea
+            id="code-area" name="code"
+            placeholder="# Напишите решение здесь&#10;def solution():&#10;    pass"
+            spellcheck="false"
+          >{% if last_submission and last_submission.status != 'accepted' %}{{ last_submission.code }}{% endif %}</textarea>
+        </div>
+
+        <div class="form-group" style="margin-top:12px;margin-bottom:12px">
+          <label class="form-label">Комментарий к решению (необязательно)</label>
+          <input type="text" name="comment" class="form-input" placeholder="Опишите свой подход...">
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button type="button" class="btn btn-ghost" onclick="clearCode()">Сбросить</button>
+          <button type="submit" class="btn btn-primary">
+            ▶ Отправить решение
+          </button>
+        </div>
+      </form>
+    </div>
+    {% else %}
+    <!-- Учитель видит все решения по задаче -->
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon">✎</span> Решения учеников</div>
+      {% with submissions=task.submission_set.all %}
+      {% if submissions %}
+      <table class="table">
+        <thead><tr><th>Ученик</th><th>Статус</th><th>Дата</th><th></th></tr></thead>
+        <tbody>
+          {% for sub in submissions %}
+          <tr>
+            <td>{{ sub.user.username }}</td>
+            <td>
+              {% if sub.status == 'accepted' %}<span class="badge badge-green">Принято</span>
+              {% elif sub.status == 'rejected' %}<span class="badge badge-red">Отклонено</span>
+              {% else %}<span class="badge badge-amber">Проверить</span>{% endif %}
+            </td>
+            <td style="color:var(--hint);font-size:12px">{{ sub.created_at|date:"d.m H:i" }}</td>
+            <td><a href="{% url 'review_submission' sub.id %}" class="btn btn-sm btn-primary">Проверить</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">Никто ещё не отправил решение</div>
+      {% endif %}
+      {% endwith %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function clearCode() {
+  if (confirm('Очистить редактор?')) {
+    document.getElementById('code-area').value = '';
+    document.getElementById('code-area').focus();
+  }
+}
+
+// Tab в textarea
+document.getElementById('code-area')?.addEventListener('keydown', function(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = this.selectionStart;
+    const end = this.selectionEnd;
+    this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+    this.selectionStart = this.selectionEnd = start + 4;
+  }
+});
+</script>
+{% endblock %}

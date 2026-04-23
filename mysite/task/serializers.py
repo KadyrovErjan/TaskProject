@@ -1,9 +1,14 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
-
+from .models import (
+    UserProfile, Topic, Task, Submission, DailyPlan, LiveLesson,
+)
 
 User = get_user_model()
+
+
+# ─── AUTH ────────────────────────────────────────────────────────────────────
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -24,6 +29,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+
 class CustomLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -31,29 +37,26 @@ class CustomLoginSerializer(serializers.Serializer):
     def validate(self, data):
         email = data.get('email')
         password = data.get('password')
-
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             raise serializers.ValidationError({"email": "Пользователь с таким email не найден"})
-
         if not user.check_password(password):
             raise serializers.ValidationError({"password": "Неверный пароль"})
-
         if not user.is_active:
             raise serializers.ValidationError("Пользователь не активен")
-
         self.context['user'] = user
         return data
 
     def to_representation(self, instance):
         user = self.context['user']
         refresh = RefreshToken.for_user(user)
-
         return {
             'user': {
+                'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'is_staff': user.is_staff,
             },
             'access': str(refresh.access_token),
             'refresh': str(refresh),
@@ -64,81 +67,103 @@ class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
 
     def validate(self, attrs):
-        token = attrs.get('refresh')
         try:
-            RefreshToken(token)
+            RefreshToken(attrs.get('refresh'))
         except Exception:
             raise serializers.ValidationError({"refresh": "Невалидный токен"})
         return attrs
 
 
+# ─── TEACHER: CREATE STUDENT ──────────────────────────────────────────────────
+
+class CreateStudentSerializer(serializers.ModelSerializer):
+    """Учитель создаёт ученика (username + password)."""
+    password = serializers.CharField(write_only=True, min_length=6)
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password', 'first_name', 'last_name')
+
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        user = User(**validated_data)
+        user.set_password(password)
+        user.is_staff = False  # явно ученик
+        if not user.username and user.email:
+            user.username = user.email
+        user.save()
+        return user
+
+
+# ─── USER ─────────────────────────────────────────────────────────────────────
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        fields = ('id', 'username', 'email', 'first_name', 'last_name',
+                  'avatar', 'date_registered', 'rating', 'streak', 'is_staff')
+        read_only_fields = ('date_registered', 'rating', 'streak', 'is_staff')
 
-class TopicSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Topic
-        fields = '__all__'
+
+# ─── TOPIC & TASK ─────────────────────────────────────────────────────────────
 
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = '__all__'
 
+
+class TopicSerializer(serializers.ModelSerializer):
+    tasks = TaskSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Topic
+        fields = ('id', 'title', 'description', 'created_at', 'tasks')
+
+
+class TopicShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Topic
+        fields = ('id', 'title', 'description', 'created_at')
+
+
+# ─── SUBMISSION ───────────────────────────────────────────────────────────────
+
 class SubmissionSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    task_title = serializers.SerializerMethodField()
+
     class Meta:
         model = Submission
-        fields = '__all__'
+        fields = ('id', 'user', 'user_name', 'task', 'task_title',
+                  'code', 'comment', 'status', 'teacher_comment', 'created_at')
+        read_only_fields = ('user', 'status', 'teacher_comment', 'created_at')
+
+    def get_task_title(self, obj):
+        return f"{obj.task.topic.title} — задача #{obj.task.number}"
+
+
+class SubmissionReviewSerializer(serializers.ModelSerializer):
+    """Только учитель меняет статус и оставляет комментарий."""
+    class Meta:
+        model = Submission
+        fields = ('status', 'teacher_comment')
+
+
+# ─── DAILY PLAN ───────────────────────────────────────────────────────────────
 
 class DailyPlanSerializer(serializers.ModelSerializer):
+    task_info = TaskSerializer(source='task', read_only=True)
+
     class Meta:
         model = DailyPlan
-        fields = '__all__'
+        fields = ('id', 'user', 'task', 'task_info', 'is_completed')
+        read_only_fields = ('user',)
+
+
+# ─── LIVE LESSON ──────────────────────────────────────────────────────────────
 
 class LiveLessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = LiveLesson
-        fields = '__all__'
-
-class TestSessionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TestSession
-        fields = '__all__'
-
-class TestParticipantSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TestParticipant
-        fields = '__all__'
-
-class QuestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Question
-        fields = '__all__'
-
-class AnswerOptionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AnswerOption
-        fields = '__all__'
-
-class AnswerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Answer
-        fields = '__all__'
-
-class HackathonSessionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = HackathonSession
-        fields = '__all__'
-
-class HackathonParticipantSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = HackathonParticipant
-        fields = '__all__'
-
-class HackathonSubmissionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = HackathonSubmission
         fields = '__all__'

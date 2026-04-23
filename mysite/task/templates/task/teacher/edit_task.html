@@ -1,0 +1,40 @@
+{% extends 'task/base.html' %}
+{% block title %}Редактировать задачу — PyForge{% endblock %}
+{% block page_title %}Редактировать задачу #{{ task.number }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px"><a href="{% url 'teacher_dashboard' %}" style="font-size:12px;color:var(--muted)">← Панель учителя</a></div>
+<div style="max-width:700px">
+  <div class="card">
+    <div class="card-title"><span class="card-title-icon">✏</span> {{ task.topic.title }} — задача #{{ task.number }}</div>
+    {% if messages %}{% for msg in messages %}
+    <div class="alert {% if msg.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <div class="grid-2" style="gap:12px">
+        <div class="form-group">
+          <label class="form-label">Тема <span style="color:var(--red)">*</span></label>
+          {{ form.topic }}
+        </div>
+        <div class="form-group">
+          <label class="form-label">Номер <span style="color:var(--red)">*</span></label>
+          {{ form.number }}
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Условие (RU) <span style="color:var(--red)">*</span></label>
+        {{ form.text_ru }}
+      </div>
+      <div class="form-group">
+        <label class="form-label">Шарт (KG)</label>
+        {{ form.text_kg }}
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+        <a href="{% url 'teacher_dashboard' %}" class="btn btn-ghost">Отмена</a>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

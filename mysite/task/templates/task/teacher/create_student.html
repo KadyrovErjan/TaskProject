@@ -1,0 +1,102 @@
+{% extends 'task/base.html' %}
+{% block title %}Добавить ученика — PyForge{% endblock %}
+{% block page_title %}Управление учениками{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px">
+  <a href="{% url 'teacher_dashboard' %}" style="font-size:12px;color:var(--muted)">← Панель учителя</a>
+</div>
+
+<div class="grid-2">
+  <!-- Форма создания -->
+  <div class="card">
+    <div class="card-title"><span class="card-title-icon">＋</span> Новый ученик</div>
+
+    {% if messages %}
+      {% for msg in messages %}
+      <div class="alert {% if msg.tags == 'error' %}alert-error{% else %}alert-success{% endif %}" style="margin-bottom:16px">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="grid-2" style="gap:12px">
+        <div class="form-group">
+          <label class="form-label">Имя</label>
+          <input type="text" name="first_name" class="form-input" placeholder="Азиз"
+                 value="{{ form.first_name.value|default:'' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Фамилия</label>
+          <input type="text" name="last_name" class="form-input" placeholder="Иванов"
+                 value="{{ form.last_name.value|default:'' }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Логин <span style="color:var(--red)">*</span></label>
+        {% if form.username.errors %}
+        <div style="font-size:11px;color:var(--red);margin-bottom:4px">{{ form.username.errors|join:', ' }}</div>
+        {% endif %}
+        <input type="text" name="username" class="form-input {% if form.username.errors %}is-error{% endif %}"
+               placeholder="aziz2025" required autocomplete="off"
+               value="{{ form.username.value|default:'' }}"
+               style="{% if form.username.errors %}border-color:var(--red){% endif %}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-input" placeholder="aziz@email.com"
+               value="{{ form.email.value|default:'' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Пароль <span style="color:var(--red)">*</span></label>
+        {% if form.password.errors %}
+        <div style="font-size:11px;color:var(--red);margin-bottom:4px">{{ form.password.errors|join:', ' }}</div>
+        {% endif %}
+        <input type="text" name="password" class="form-input" placeholder="Минимум 6 символов"
+               required autocomplete="off"
+               style="{% if form.password.errors %}border-color:var(--red){% endif %}">
+        <div style="font-size:11px;color:var(--hint);margin-top:4px">
+          Запомните пароль — он показывается только один раз
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Создать ученика</button>
+    </form>
+  </div>
+
+  <!-- Список учеников -->
+  <div class="card">
+    <div class="card-title">
+      👤 Все ученики
+      <span class="badge badge-gray" style="margin-left:auto">{{ students|length }}</span>
+    </div>
+    {% if students %}
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:500px;overflow-y:auto">
+      {% for student in students %}
+      <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--amber-dim);border:1px solid var(--amber-border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--amber);flex-shrink:0">
+          {{ student.username|first|upper }}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500">{{ student.username }}</div>
+          <div style="font-size:11px;color:var(--hint)">
+            {{ student.email|default:"нет email" }} · {{ student.date_registered|date:"d.m.Y" }}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-right:8px">
+          <div style="font-size:12px;color:var(--amber)">★ {{ student.rating }}</div>
+          <div style="font-size:11px;color:var(--hint)">🔥 {{ student.streak }}</div>
+        </div>
+        <form method="post" action="{% url 'delete_student' student.pk %}"
+              onsubmit="return confirm('Удалить ученика «{{ student.username }}»?')">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-danger" style="font-size:11px;padding:4px 8px">✕</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">Учеников ещё нет. Добавьте первого!</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

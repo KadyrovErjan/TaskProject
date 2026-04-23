@@ -1,0 +1,279 @@
+{% extends 'task/base.html' %}
+{% block title %}Дашборд — PyForge{% endblock %}
+{% block page_title %}
+  {% if user.is_staff %}Панель учителя{% else %}Мой дашборд{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if user.is_staff %}
+{# ════════════════════════════════════════════════
+   TEACHER DASHBOARD
+════════════════════════════════════════════════ #}
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-num">{{ total_students }}</div>
+    <div class="stat-lbl">Учеников</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num">{{ total_tasks }}</div>
+    <div class="stat-lbl">Задач</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--amber)">{{ pending_count }}</div>
+    <div class="stat-lbl">Ожидают проверки</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--purple)">{{ topics|length }}</div>
+    <div class="stat-lbl">Тем</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- Решения на проверку -->
+  <div class="card">
+    <div class="card-title">
+      <span class="card-title-icon">✎</span>
+      Ожидают проверки
+      {% if pending_count > 5 %}<span class="badge badge-amber" style="margin-left:auto">+{{ pending_count|add:"-5" }} ещё</span>{% endif %}
+    </div>
+    {% if pending_submissions %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Ученик</th>
+          <th>Задача</th>
+          <th>Дата</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sub in pending_submissions %}
+        <tr>
+          <td>{{ sub.user.username }}</td>
+          <td style="color:var(--muted);font-size:12px">{{ sub.task.topic.title }} #{{ sub.task.number }}</td>
+          <td style="color:var(--hint);font-size:12px">{{ sub.created_at|date:"d.m H:i" }}</td>
+          <td>
+            <a href="{% url 'review_submission' sub.id %}" class="btn btn-sm btn-primary">Проверить</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">Нет решений для проверки</div>
+    {% endif %}
+    <div style="margin-top:12px">
+      <a href="{% url 'submissions' %}" class="btn btn-ghost btn-sm">Все решения →</a>
+    </div>
+  </div>
+
+  <!-- Ученики -->
+  <div class="card">
+    <div class="card-title">
+      <span class="card-title-icon">👤</span>
+      Последние ученики
+      <a href="{% url 'create_student' %}" class="btn btn-sm btn-primary" style="margin-left:auto">+ Добавить</a>
+    </div>
+    {% if students %}
+    <table class="table">
+      <thead>
+        <tr><th>Имя</th><th>Рейтинг</th><th>Стрик</th><th>Дата</th></tr>
+      </thead>
+      <tbody>
+        {% for student in students|slice:":6" %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:26px;height:26px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--amber)">
+                {{ student.username|first|upper }}
+              </div>
+              {{ student.username }}
+            </div>
+          </td>
+          <td style="color:var(--amber)">★ {{ student.rating }}</td>
+          <td>🔥 {{ student.streak }}</td>
+          <td style="color:var(--hint);font-size:12px">{{ student.date_registered|date:"d.m.Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">Учеников пока нет.<br><a href="{% url 'create_student' %}" class="text-amber">Добавить первого →</a></div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Темы и задачи -->
+<div class="card" style="margin-top:16px">
+  <div class="card-title">
+    <span class="card-title-icon">◈</span>
+    Темы и задачи
+    <a href="/admin/task/topic/add/" class="btn btn-sm btn-ghost" style="margin-left:auto">+ Добавить тему</a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+    {% for topic in topics %}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px">
+      <div style="font-size:13px;font-weight:500;margin-bottom:6px">{{ topic.title }}</div>
+      <div style="font-size:11px;color:var(--muted)">{{ topic.tasks.count }} задач</div>
+      <div style="margin-top:10px">
+        <a href="{% url 'tasks' %}" class="btn btn-sm btn-ghost">Открыть</a>
+      </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">Тем нет. <a href="/admin/task/topic/add/" class="text-amber">Добавить через admin →</a></div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Live уроки -->
+{% if live_lessons %}
+<div class="card" style="margin-top:16px">
+  <div class="card-title"><span class="card-title-icon">🎥</span> Live уроки</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {% for lesson in live_lessons %}
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 16px">
+      <div>
+        <div style="font-size:13px;font-weight:500">{{ lesson.title }}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">{{ lesson.start_time|date:"d.m.Y H:i" }}</div>
+      </div>
+      {% if lesson.is_active %}
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="live-dot"></span>
+        <span style="font-size:11px;color:var(--green)">LIVE</span>
+        <a href="{{ lesson.link }}" target="_blank" class="btn btn-sm btn-success">Войти</a>
+      </div>
+      {% else %}
+      <span class="badge badge-gray">Запланирован</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+{# ════════════════════════════════════════════════
+   STUDENT DASHBOARD
+════════════════════════════════════════════════ #}
+
+<!-- Приветствие -->
+<div style="background:linear-gradient(135deg,#1A1030,#111114);border:1px solid #2D1E50;border-radius:14px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:4px">Привет, {{ user.first_name|default:user.username }} 👋</div>
+    <div style="font-size:13px;color:var(--muted)">Продолжай решать задачи и улучшай свой рейтинг</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:28px;font-weight:600;color:var(--amber)">#{{ user.rating }}</div>
+    <div style="font-size:11px;color:var(--muted)">очков</div>
+  </div>
+</div>
+
+<!-- Статистика -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--green)">{{ solved }}</div>
+    <div class="stat-lbl">Принято</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--amber)">{{ pending }}</div>
+    <div class="stat-lbl">На проверке</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--red)">{{ rejected }}</div>
+    <div class="stat-lbl">Отклонено</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num">🔥 {{ streak }}</div>
+    <div class="stat-lbl">Дней подряд</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- План на сегодня -->
+  <div class="card">
+    <div class="card-title"><span class="card-title-icon">✔</span> План на сегодня</div>
+    {% if daily_plans %}
+    <div style="display:flex;flex-direction:column;gap:6px">
+      {% for plan in daily_plans %}
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px">
+        {% if plan.is_completed %}
+        <div style="width:18px;height:18px;border-radius:4px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;color:white">✓</div>
+        <span style="color:var(--hint);text-decoration:line-through;font-size:13px;flex:1">{{ plan.task.topic.title }} — задача #{{ plan.task.number }}</span>
+        {% else %}
+        <div style="width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0"></div>
+        <a href="{% url 'task_detail' plan.task.id %}" style="font-size:13px;flex:1;color:var(--text)">{{ plan.task.topic.title }} — задача #{{ plan.task.number }}</a>
+        <a href="{% url 'task_detail' plan.task.id %}" class="btn btn-sm btn-ghost">Открыть</a>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">Учитель пока не добавил задания</div>
+    {% endif %}
+  </div>
+
+  <!-- Мои последние решения -->
+  <div class="card">
+    <div class="card-title"><span class="card-title-icon">✎</span> Последние решения</div>
+    {% if my_submissions %}
+    <table class="table">
+      <thead><tr><th>Задача</th><th>Статус</th><th>Дата</th></tr></thead>
+      <tbody>
+        {% for sub in my_submissions %}
+        <tr>
+          <td style="font-size:12px">{{ sub.task.topic.title }} #{{ sub.task.number }}</td>
+          <td>
+            {% if sub.status == 'accepted' %}<span class="badge badge-green">Принято</span>
+            {% elif sub.status == 'rejected' %}<span class="badge badge-red">Отклонено</span>
+            {% else %}<span class="badge badge-amber">На проверке</span>{% endif %}
+          </td>
+          <td style="color:var(--hint);font-size:12px">{{ sub.created_at|date:"d.m H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="margin-top:12px"><a href="{% url 'submissions' %}" class="btn btn-ghost btn-sm">Все решения →</a></div>
+    {% else %}
+    <div class="empty-state">Вы ещё не отправили ни одного решения.<br>
+      <a href="{% url 'tasks' %}" class="text-amber">Открыть задачи →</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Активный хакатон -->
+{% if active_hackathon %}
+<div style="background:linear-gradient(135deg,#0D0020,#1A0040);border:1px solid rgba(124,58,237,0.3);border-radius:14px;padding:20px 24px;margin-top:16px;display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span class="live-dot" style="background:var(--purple)"></span>
+      <span style="font-size:11px;color:#A78BFA;font-weight:500">ХАКАТОН ИДЁТ</span>
+    </div>
+    <div style="font-size:15px;font-weight:600">{{ active_hackathon.title }}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">До {{ active_hackathon.end_time|date:"d.m H:i" }}</div>
+  </div>
+  <a href="{% url 'hackathon' %}" class="btn btn-primary">Участвовать →</a>
+</div>
+{% endif %}
+
+<!-- Live уроки -->
+{% if live_lessons %}
+<div class="card" style="margin-top:16px">
+  <div class="card-title"><span class="card-title-icon">🎥</span> Активные уроки</div>
+  {% for lesson in live_lessons %}
+  <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border:1px solid #1A3A2A;border-radius:8px;padding:12px 16px;margin-bottom:8px">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="live-dot"></span>
+        <span style="font-size:13px;font-weight:500">{{ lesson.title }}</span>
+      </div>
+    </div>
+    <a href="{{ lesson.link }}" target="_blank" class="btn btn-sm btn-success">Присоединиться</a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends 'task/base.html' %}
+{% block title %}Задачи — PyForge{% endblock %}
+{% block page_title %}Задачи{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+  <div style="font-size:13px;color:var(--muted)">Всего тем: <strong style="color:var(--text)">{{ topics|length }}</strong></div>
+  {% if user.is_staff %}
+  <a href="/admin/task/task/add/" class="btn btn-primary btn-sm">+ Добавить задачу</a>
+  {% endif %}
+</div>
+
+{% for topic in topics %}
+<div class="card mb-16" style="margin-bottom:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div>
+      <div style="font-size:15px;font-weight:600">{{ topic.title }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">{{ topic.description|truncatechars:80 }}</div>
+    </div>
+    <span class="tag">{{ topic.tasks.count }} задач</span>
+  </div>
+
+  {% if topic.tasks.all %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+    {% for task in topic.tasks.all %}
+    <a href="{% url 'task_detail' task.id %}" style="display:block">
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;transition:all 0.15s;cursor:pointer"
+           onmouseover="this.style.borderColor='var(--amber)';this.style.transform='translateY(-2px)'"
+           onmouseout="this.style.borderColor='var(--border)';this.style.transform='translateY(0)'">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:11px;color:var(--hint);font-family:var(--mono)">#{{ task.number }}</span>
+          {% if task.id in solved_ids %}
+            <span class="badge badge-green">✓ Принято</span>
+          {% elif task.id in rejected_ids %}
+            <span class="badge badge-red">✗ Отклонено</span>
+          {% elif task.id in pending_ids %}
+            <span class="badge badge-amber">⏳ Проверяется</span>
+          {% endif %}
+        </div>
+        <div style="font-size:13px;font-weight:500;margin-bottom:8px;line-height:1.4">{{ task.text_ru|truncatechars:60 }}</div>
+        <div style="font-size:11px;color:var(--hint)">Нажми чтобы открыть →</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">В этой теме пока нет задач</div>
+  {% endif %}
+</div>
+{% empty %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    Тем пока нет.<br>
+    {% if user.is_staff %}
+    <a href="/admin/task/topic/add/" class="text-amber" style="margin-top:8px;display:inline-block">Добавить первую тему →</a>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

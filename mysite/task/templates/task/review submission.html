@@ -1,0 +1,85 @@
+{% extends 'task/base.html' %}
+{% block title %}Проверка решения — PyForge{% endblock %}
+{% block page_title %}Проверка решения{% endblock %}
+
+{% block content %}
+<div style="max-width:800px">
+  <div style="margin-bottom:16px">
+    <a href="{% url 'submissions' %}" style="font-size:12px;color:var(--muted)">← Все решения</a>
+  </div>
+
+  <!-- Шапка -->
+  <div class="card mb-16" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:4px">
+          {{ submission.task.topic.title }} · Задача #{{ submission.task.number }}
+        </div>
+        <div style="font-size:16px;font-weight:600">Решение от: {{ submission.user.username }}</div>
+        <div style="font-size:12px;color:var(--hint);margin-top:4px">{{ submission.created_at|date:"d.m.Y H:i" }}</div>
+      </div>
+      <div>
+        {% if submission.status == 'accepted' %}<span class="badge badge-green" style="font-size:13px;padding:4px 12px">✓ Принято</span>
+        {% elif submission.status == 'rejected' %}<span class="badge badge-red" style="font-size:13px;padding:4px 12px">✗ Отклонено</span>
+        {% else %}<span class="badge badge-amber" style="font-size:13px;padding:4px 12px">⏳ На проверке</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Условие задачи -->
+  <div class="card mb-16" style="margin-bottom:16px">
+    <div class="card-title"><span class="card-title-icon">◈</span> Условие задачи</div>
+    <div style="font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap">{{ submission.task.text_ru }}</div>
+  </div>
+
+  <!-- Код ученика -->
+  <div class="card mb-16" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0"><span class="card-title-icon">⌨</span> Код ученика</div>
+      {% if submission.comment %}
+      <span style="font-size:12px;color:var(--muted)">💬 {{ submission.comment }}</span>
+      {% endif %}
+    </div>
+    <div class="code-block">{{ submission.code }}</div>
+  </div>
+
+  <!-- Форма проверки -->
+  {% if submission.status == 'pending' %}
+  <div class="card">
+    <div class="card-title"><span class="card-title-icon">✔</span> Вынести решение</div>
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Комментарий учителя</label>
+        <textarea name="teacher_comment" class="form-input" rows="3"
+          style="height:80px;resize:vertical;font-family:var(--sans)"
+          placeholder="Напишите комментарий к решению...">{{ submission.teacher_comment }}</textarea>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button type="submit" name="status" value="rejected" class="btn btn-danger">
+          ✗ Отклонить
+        </button>
+        <button type="submit" name="status" value="accepted" class="btn btn-success">
+          ✓ Принять (+10 очков)
+        </button>
+      </div>
+    </form>
+  </div>
+  {% else %}
+  <!-- Уже проверено -->
+  <div class="card">
+    <div class="card-title"><span class="card-title-icon">💬</span> Комментарий учителя</div>
+    {% if submission.teacher_comment %}
+    <div style="background:var(--bg3);border-left:3px solid var(--amber);padding:12px 16px;border-radius:0 8px 8px 0">
+      {{ submission.teacher_comment }}
+    </div>
+    {% else %}
+    <div class="text-muted">Комментарий не оставлен</div>
+    {% endif %}
+    <div style="margin-top:16px">
+      <a href="{% url 'submissions' %}" class="btn btn-ghost">← К решениям</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
