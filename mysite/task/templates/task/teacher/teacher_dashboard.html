@@ -1,5 +1,5 @@
 {% extends 'task/base.html' %}
-{% block title %}Панель учителя – PyForge{% endblock %}
+{% block title %}Панель учителя — PyForge{% endblock %}
 {% block page_title %}Панель учителя{% endblock %}
 
 {% block extra_head %}
@@ -11,6 +11,17 @@
 .item-actions{display:flex;gap:5px;flex-shrink:0}
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .pending-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.25);color:var(--amber);font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
+.rank-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:22px;height:18px;
+  font-family:var(--mono);font-size:10px;font-weight:600;
+  color:var(--hint);background:var(--bg);
+  border:1px solid var(--border);border-radius:4px;
+  flex-shrink:0;padding:0 4px;
+}
+.rank-badge.rank-1{color:#FFD700;border-color:#5A4500;background:#1A1000}
+.rank-badge.rank-2{color:#C0C0C0;border-color:#404040;background:#181818}
+.rank-badge.rank-3{color:#CD7F32;border-color:#4A2800;background:#1A0E00}
 </style>
 {% endblock %}
 
@@ -47,15 +58,24 @@
       <div style="max-height:280px;overflow-y:auto">
         {% for s in students %}
         <div class="item-row">
+
+          <!-- Rank badge -->
+          <span class="rank-badge {% if s.rank == 1 %}rank-1{% elif s.rank == 2 %}rank-2{% elif s.rank == 3 %}rank-3{% endif %}">
+            №{{ s.rank }}
+          </span>
+
           <div class="item-av">{{ s.username|first|upper }}</div>
+
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:500">{{ s.username }}</div>
             <div style="font-size:11px;color:var(--hint)">{{ s.email|default:"нет email" }} · {{ s.date_registered|date:"d.m.Y" }}</div>
           </div>
+
           <div style="text-align:right;flex-shrink:0;margin-right:8px">
-            <div style="font-size:12px;color:var(--amber)">⭐ {{ s.rating }}</div>
+            <div style="font-size:12px;color:var(--amber)">⭐ {{ s.rating }} баллов</div>
             <div style="font-size:10px;color:var(--hint)">🔥 {{ s.streak }}</div>
           </div>
+
           <div class="item-actions">
             <form method="post" action="{% url 'delete_student' s.pk %}" onsubmit="return confirm('Удалить ученика «{{ s.username }}»?')">
               {% csrf_token %}
@@ -71,7 +91,7 @@
     <div class="card">
       <div class="sec-hdr">
         <div class="card-title" style="margin-bottom:0">
-          ✌ На проверке
+          ✊ На проверке
           {% if pending_count %}<span class="pending-pill" style="margin-left:6px">{{ pending_count }}</span>{% endif %}
         </div>
         <a href="{% url 'submissions' %}" class="btn btn-ghost btn-sm">Все →</a>
@@ -107,7 +127,7 @@
             <td>
               {% if sub.status == 'accepted' %}<span class="badge badge-green">✓</span>
               {% elif sub.status == 'rejected' %}<span class="badge badge-red">✗</span>
-              {% else %}<span class="badge badge-amber">⏳</span>{% endif %}
+              {% else %}<span class="badge badge-amber">⏱</span>{% endif %}
             </td>
             <td style="font-size:11px;color:var(--hint)">{{ sub.created_at|date:"d.m H:i" }}</td>
           </tr>

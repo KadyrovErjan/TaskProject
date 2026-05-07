@@ -7,7 +7,7 @@ from functools import wraps
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.views.decorators.http import require_POST
-from django.db.models import Count
+from django.db.models import Count, F
 
 from .models import (
     UserProfile, Topic, Task,
@@ -18,7 +18,7 @@ from .forms import (
 )
 
 
-# ─── DECORATOR ────────────────────────────────────────────────────────────────
+# ── DECORATOR ────────────────────────────────────────────────────────────────
 
 def teacher_required(view_func):
     """Redirect to login if user is not authenticated or not a teacher."""
@@ -32,30 +32,60 @@ def teacher_required(view_func):
     return wrapper
 
 
-# ─── DASHBOARD ────────────────────────────────────────────────────────────────
+# ── DASHBOARD ─────────────────────────────────────────────────────────────────
 
 @teacher_required
 def teacher_dashboard(request):
-    students   = UserProfile.objects.filter(is_staff=False).order_by('-date_registered')
-    topics     = Topic.objects.prefetch_related('tasks').all()
+    # Пробуем Window functions (Django 2.0+, любая современная БД)
+    try:
+        from django.db.models import Window
+        from django.db.models.functions import DenseRank
 
+        students = list(
+            UserProfile.objects.filter(is_staff=False)
+            .annotate(
+                rank=Window(
+                    expression=DenseRank(),
+                    order_by=[F('rating').desc(), F('date_registered').asc()]
+                )
+            )
+            .order_by('-rating', 'date_registered')
+        )
+    except Exception:
+        # Fallback: вычисляем DENSE RANK в Python (без N+1 запросов)
+        raw = list(
+            UserProfile.objects.filter(is_staff=False)
+            .order_by('-rating', 'date_registered')
+        )
+        current_rank = 0
+        prev_rating = object()  # sentinel — не совпадёт ни с каким rating
+        counter = 0
+        for s in raw:
+            counter += 1
+            if s.rating != prev_rating:
+                current_rank = counter
+                prev_rating = s.rating
+            s.rank = current_rank
+        students = raw
+
+    topics        = Topic.objects.prefetch_related('tasks').all()
     pending_subs  = Submission.objects.filter(status='pending').select_related('user', 'task', 'task__topic')
     recent_subs   = Submission.objects.select_related('user', 'task', 'task__topic').order_by('-created_at')[:15]
     accepted_count = Submission.objects.filter(status='accepted').count()
 
     return render(request, 'task/teacher/teacher_dashboard.html', {
-        'students':        students,
-        'topics':          topics,
-        'pending_subs':    pending_subs,
-        'recent_subs':     recent_subs,
-        'total_students':  students.count(),
-        'total_tasks':     Task.objects.count(),
-        'pending_count':   pending_subs.count(),
-        'accepted_count':  accepted_count,
+        'students':       students,
+        'topics':         topics,
+        'pending_subs':   pending_subs,
+        'recent_subs':    recent_subs,
+        'total_students': len(students),
+        'total_tasks':    Task.objects.count(),
+        'pending_count':  pending_subs.count(),
+        'accepted_count': accepted_count,
     })
 
 
-# ─── STUDENTS ─────────────────────────────────────────────────────────────────
+# ── STUDENTS ──────────────────────────────────────────────────────────────────
 
 @teacher_required
 def create_student(request):
@@ -91,7 +121,7 @@ def delete_student(request, pk):
     return redirect('create_student')
 
 
-# ─── TOPICS ───────────────────────────────────────────────────────────────────
+# ── TOPICS ────────────────────────────────────────────────────────────────────
 
 @teacher_required
 def create_topic(request):
@@ -129,7 +159,7 @@ def delete_topic(request, pk):
     return redirect('teacher_dashboard')
 
 
-# ─── TASKS ────────────────────────────────────────────────────────────────────
+# ── TASKS ─────────────────────────────────────────────────────────────────────
 
 @teacher_required
 def create_task(request):
@@ -161,5 +191,3 @@ def delete_task(request, pk):
     task.delete()
     messages.success(request, 'Задача удалена.')
     return redirect('teacher_dashboard')
-
-
