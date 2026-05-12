@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Topic, Task
+from .models import Topic, Task, InterviewTopic, InterviewQuestion
 
 User = get_user_model()
 
@@ -58,3 +58,46 @@ class TaskForm(forms.ModelForm):
 class LoginForm(forms.Form):
     username = forms.CharField(max_length=150, label='Логин')
     password = forms.CharField(widget=forms.PasswordInput, label='Пароль')
+
+
+# ─── INTERVIEW FORMS ──────────────────────────────────────────────────────────
+
+class InterviewTopicForm(forms.ModelForm):
+    class Meta:
+        model = InterviewTopic
+        fields = ['title', 'description']
+        labels = {'title': 'Название темы', 'description': 'Описание'}
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Например: Python Basics',
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'form-input', 'rows': 3,
+                'placeholder': 'Краткое описание темы...',
+            }),
+        }
+
+
+class InterviewQuestionForm(forms.ModelForm):
+    class Meta:
+        model = InterviewQuestion
+        fields = ['topic', 'question', 'answer', 'difficulty']
+        labels = {
+            'topic': 'Тема',
+            'question': 'Вопрос',
+            'answer': 'Ответ',
+            'difficulty': 'Сложность',
+        }
+        widgets = {
+            'topic': forms.Select(attrs={'class': 'form-input'}),
+            'question': forms.Textarea(attrs={
+                'class': 'form-input', 'rows': 3,
+                'placeholder': 'Введите вопрос...',
+            }),
+            'answer': forms.Textarea(attrs={
+                'class': 'form-input', 'rows': 6,
+                'placeholder': 'Введите развёрнутый ответ...',
+            }),
+            'difficulty': forms.Select(attrs={'class': 'form-input'}),
+        }

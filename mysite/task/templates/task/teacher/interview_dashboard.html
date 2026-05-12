@@ -1,0 +1,117 @@
+{% extends 'task/base.html' %}
+{% block title %}Interview — PyForge{% endblock %}
+{% block page_title %}Interview Preparation{% endblock %}
+
+{% block extra_head %}
+<style>
+.i-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.q-row{padding:12px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;transition:border-color .15s}
+.q-row:hover{border-color:var(--border2)}
+.topic-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--muted)}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% if messages %}
+<div style="margin-bottom:16px">
+  {% for msg in messages %}
+  <div class="alert {% if msg.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">{{ msg }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card"><div class="stat-num" style="color:var(--blue)">{{ topic_count }}</div><div class="stat-lbl">Тем</div></div>
+  <div class="stat-card"><div class="stat-num">{{ question_count }}</div><div class="stat-lbl">Вопросов</div></div>
+  <div class="stat-card">
+    <div class="stat-num" style="color:var(--green)">{{ topics|length }}</div>
+    <div class="stat-lbl">Активных тем</div>
+  </div>
+</div>
+
+<div class="i-grid">
+
+  <!-- LEFT: Topics -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0">🗂 Темы</div>
+      <a href="{% url 'interview_topic_create' %}" class="btn btn-primary btn-sm">+ Тема</a>
+    </div>
+
+    {% if topics %}
+    <div style="max-height:500px;overflow-y:auto">
+      {% for topic in topics %}
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:13px;font-weight:600">{{ topic.title }}</div>
+            {% if topic.description %}
+            <div style="font-size:11px;color:var(--hint);margin-top:2px">{{ topic.description|truncatechars:60 }}</div>
+            {% endif %}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span class="tag">{{ topic.question_count }} воп.</span>
+            <a href="{% url 'interview_topic_edit' topic.pk %}" class="btn btn-sm btn-ghost" style="padding:3px 9px;font-size:11px">✏</a>
+            <form method="post" action="{% url 'interview_topic_delete' topic.pk %}"
+                  onsubmit="return confirm('Удалить тему «{{ topic.title }}»?')" style="display:inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-danger" style="padding:3px 9px;font-size:11px">✕</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">Тем пока нет. <a href="{% url 'interview_topic_create' %}" class="text-amber">Создать →</a></div>
+    {% endif %}
+  </div>
+
+  <!-- RIGHT: Recent questions -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0">❓ Последние вопросы</div>
+      <a href="{% url 'interview_question_create' %}" class="btn btn-primary btn-sm">+ Вопрос</a>
+    </div>
+
+    {% if questions %}
+    <div style="max-height:500px;overflow-y:auto">
+      {% for q in questions %}
+      <div class="q-row">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:4px">
+              <span class="topic-chip">{{ q.topic.title }}</span>
+            </div>
+            <div style="font-size:13px;font-weight:500;line-height:1.5">{{ q.question|truncatechars:80 }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+            {% if q.difficulty == 'easy' %}
+            <span class="diff-easy">Easy</span>
+            {% elif q.difficulty == 'medium' %}
+            <span class="diff-medium">Med</span>
+            {% else %}
+            <span class="diff-hard">Hard</span>
+            {% endif %}
+            <div style="display:flex;gap:4px">
+              <a href="{% url 'interview_question_edit' q.pk %}" class="btn btn-sm btn-ghost" style="padding:3px 8px;font-size:11px">✏</a>
+              <form method="post" action="{% url 'interview_question_delete' q.pk %}"
+                    onsubmit="return confirm('Удалить вопрос?')" style="display:inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger" style="padding:3px 8px;font-size:11px">✕</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">Вопросов пока нет. <a href="{% url 'interview_question_create' %}" class="text-amber">Добавить →</a></div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

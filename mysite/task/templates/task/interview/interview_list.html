@@ -1,0 +1,150 @@
+{% extends 'task/base.html' %}
+{% block title %}Interview Preparation — PyForge{% endblock %}
+{% block page_title %}🎯 Interview Preparation{% endblock %}
+
+{% block extra_head %}
+<style>
+.search-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.search-bar input,.search-bar select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;color:var(--text);font-size:13px;outline:none;transition:border-color .15s}
+.search-bar input{flex:1;min-width:200px}
+.search-bar input:focus,.search-bar select:focus{border-color:var(--amber)}
+.search-bar select{cursor:pointer}
+
+.q-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:18px 20px;margin-bottom:10px;transition:border-color .15s;
+}
+.q-card:hover{border-color:var(--border2)}
+
+.answer-body{
+  display:none;
+  margin-top:14px;padding:14px 16px;
+  background:var(--bg3);border-left:3px solid var(--amber);
+  border-radius:0 8px 8px 0;
+  font-size:13px;line-height:1.8;color:var(--text);
+  white-space:pre-wrap;word-break:break-word;
+}
+.answer-body.open{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+
+.toggle-btn{
+  background:none;border:none;cursor:pointer;
+  font-size:12px;color:var(--muted);padding:0;margin-top:8px;
+  display:flex;align-items:center;gap:5px;transition:color .15s;
+}
+.toggle-btn:hover{color:var(--amber)}
+
+.topic-pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.topic-pill{
+  padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;
+  background:var(--bg3);border:1px solid var(--border);color:var(--muted);
+  transition:all .15s;text-decoration:none;display:inline-block;
+}
+.topic-pill:hover,.topic-pill.active{background:var(--amber-dim);color:var(--amber);border-color:var(--amber-border)}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div style="background:linear-gradient(135deg,#1A1030,#111114);border:1px solid #2D1E50;border-radius:14px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:4px">Подготовка к собеседованиям 🎯</div>
+    <div style="font-size:13px;color:var(--muted)">{{ topics|length }} тем · {{ total }} вопросов</div>
+  </div>
+  <div style="font-size:36px">💼</div>
+</div>
+
+<!-- Topic pills -->
+<div class="topic-pills">
+  <a href="{% url 'interview_list' %}{% if q %}?q={{ q }}{% endif %}{% if difficulty %}&difficulty={{ difficulty }}{% endif %}" class="topic-pill {% if not topic_slug %}active{% endif %}">
+    Все темы
+  </a>
+  {% for t in topics %}
+  <a href="{% url 'interview_topic_detail' t.slug %}" class="topic-pill {% if topic_slug == t.slug %}active{% endif %}">
+    {{ t.title }}
+    <span style="font-size:10px;color:var(--hint);margin-left:4px">({{ t.question_count }})</span>
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Search & filter -->
+<form method="get" class="search-bar">
+  {% if topic_slug %}<input type="hidden" name="topic" value="{{ topic_slug }}">{% endif %}
+  <input type="text" name="q" placeholder="🔍 Поиск по вопросам и ответам..." value="{{ q }}">
+  <select name="difficulty" onchange="this.form.submit()">
+    <option value="">Все уровни</option>
+    <option value="easy"   {% if difficulty == 'easy'   %}selected{% endif %}>🟢 Easy</option>
+    <option value="medium" {% if difficulty == 'medium' %}selected{% endif %}>🟡 Medium</option>
+    <option value="hard"   {% if difficulty == 'hard'   %}selected{% endif %}>🔴 Hard</option>
+  </select>
+  <button type="submit" class="btn btn-primary">Найти</button>
+  {% if q or difficulty %}
+  <a href="{% url 'interview_list' %}" class="btn btn-ghost">✕ Сброс</a>
+  {% endif %}
+</form>
+
+<!-- Questions list -->
+{% if questions %}
+<div style="font-size:12px;color:var(--hint);margin-bottom:12px">Найдено: {{ total }} вопросов</div>
+
+{% for question in questions %}
+<div class="q-card">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+    <div style="flex:1;min-width:0">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <span class="topic-chip" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;color:var(--muted)">
+          {{ question.topic.title }}
+        </span>
+        {% if question.difficulty == 'easy' %}
+        <span class="diff-easy">Easy</span>
+        {% elif question.difficulty == 'medium' %}
+        <span class="diff-medium">Medium</span>
+        {% else %}
+        <span class="diff-hard">Hard</span>
+        {% endif %}
+      </div>
+      <div style="font-size:14px;font-weight:500;line-height:1.5;color:var(--text)">
+        {{ question.question }}
+      </div>
+      <div class="answer-body" id="ans-{{ question.pk }}">{{ question.answer }}</div>
+      <button class="toggle-btn" onclick="toggleAnswer({{ question.pk }}, this)">
+        <span class="toggle-icon">▶</span> Показать ответ
+      </button>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    {% if q or difficulty %}
+    Ничего не найдено по запросу.<br>
+    <a href="{% url 'interview_list' %}" class="text-amber" style="margin-top:8px;display:inline-block">Сбросить фильтры →</a>
+    {% else %}
+    Вопросов пока нет. Учитель добавит их скоро!
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleAnswer(id, btn) {
+  const el = document.getElementById('ans-' + id);
+  const icon = btn.querySelector('.toggle-icon');
+  if (el.classList.contains('open')) {
+    el.classList.remove('open');
+    icon.textContent = '▶';
+    btn.childNodes[1].textContent = ' Показать ответ';
+  } else {
+    el.classList.add('open');
+    icon.textContent = '▼';
+    btn.childNodes[1].textContent = ' Скрыть ответ';
+  }
+}
+</script>
+{% endblock %}

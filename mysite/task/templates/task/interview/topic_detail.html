@@ -1,0 +1,121 @@
+{% extends 'task/base.html' %}
+{% block title %}{{ topic.title }} — Interview — PyForge{% endblock %}
+{% block page_title %}🎯 {{ topic.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+.answer-body{display:none;margin-top:14px;padding:14px 16px;background:var(--bg3);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;font-size:13px;line-height:1.8;color:var(--text);white-space:pre-wrap;word-break:break-word}
+.answer-body.open{display:block;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.toggle-btn{background:none;border:none;cursor:pointer;font-size:12px;color:var(--muted);padding:0;margin-top:8px;display:flex;align-items:center;gap:5px;transition:color .15s}
+.toggle-btn:hover{color:var(--amber)}
+.search-bar{display:flex;gap:10px;margin-bottom:20px}
+.search-bar input,.search-bar select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;color:var(--text);font-size:13px;outline:none;transition:border-color .15s}
+.search-bar input{flex:1}
+.search-bar input:focus,.search-bar select:focus{border-color:var(--amber)}
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px">
+  <a href="{% url 'interview_list' %}" style="font-size:12px;color:var(--muted)">← Все темы</a>
+</div>
+
+<!-- Topic header -->
+<div style="background:linear-gradient(135deg,#0D0020,#111114);border:1px solid #2D1E50;border-radius:14px;padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:4px">{{ topic.title }}</div>
+    {% if topic.description %}
+    <div style="font-size:13px;color:var(--muted)">{{ topic.description }}</div>
+    {% endif %}
+  </div>
+  <div>
+    <span class="tag" style="font-size:13px;padding:6px 14px">{{ questions|length }} вопросов</span>
+  </div>
+</div>
+
+<!-- Other topics -->
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+  {% for t in all_topics %}
+  <a href="{% url 'interview_topic_detail' t.slug %}" style="padding:4px 12px;border-radius:20px;font-size:12px;{% if t.slug == topic.slug %}background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber-border){% else %}background:var(--bg3);color:var(--muted);border:1px solid var(--border){% endif %}">
+    {{ t.title }}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Search & filter -->
+<form method="get" class="search-bar">
+  <input type="text" name="q" placeholder="🔍 Поиск в этой теме..." value="{{ q }}">
+  <select name="difficulty" onchange="this.form.submit()">
+    <option value="">Все уровни</option>
+    <option value="easy"   {% if difficulty == 'easy' %}selected{% endif %}>🟢 Easy</option>
+    <option value="medium" {% if difficulty == 'medium' %}selected{% endif %}>🟡 Medium</option>
+    <option value="hard"   {% if difficulty == 'hard' %}selected{% endif %}>🔴 Hard</option>
+  </select>
+  <button type="submit" class="btn btn-primary">Найти</button>
+  {% if q or difficulty %}
+  <a href="{% url 'interview_topic_detail' topic.slug %}" class="btn btn-ghost">✕ Сброс</a>
+  {% endif %}
+</form>
+
+<!-- Difficulty stats -->
+{% if questions %}
+<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+  <span class="diff-easy">Easy: {% for q in questions %}{% if q.difficulty == 'easy' %}+{% endif %}{% endfor %}</span>
+  <span class="diff-medium">Medium: {% for q in questions %}{% if q.difficulty == 'medium' %}+{% endif %}{% endfor %}</span>
+  <span class="diff-hard">Hard: {% for q in questions %}{% if q.difficulty == 'hard' %}+{% endif %}{% endfor %}</span>
+</div>
+
+<!-- Questions -->
+{% for question in questions %}
+<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:10px;transition:border-color .15s" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+    <div style="flex:1;min-width:0">
+      <div style="margin-bottom:8px">
+        {% if question.difficulty == 'easy' %}
+        <span class="diff-easy">Easy</span>
+        {% elif question.difficulty == 'medium' %}
+        <span class="diff-medium">Medium</span>
+        {% else %}
+        <span class="diff-hard">Hard</span>
+        {% endif %}
+      </div>
+      <div style="font-size:14px;font-weight:500;line-height:1.5;color:var(--text)">
+        {{ question.question }}
+      </div>
+      <div class="answer-body" id="ans-{{ question.pk }}">{{ question.answer }}</div>
+      <button class="toggle-btn" onclick="toggleAnswer({{ question.pk }}, this)">
+        <span class="toggle-icon">▶</span> Показать ответ
+      </button>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="card">
+  <div class="empty-state" style="padding:60px">
+    {% if q or difficulty %}Ничего не найдено.{% else %}В этой теме пока нет вопросов.{% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleAnswer(id, btn) {
+  const el = document.getElementById('ans-' + id);
+  const icon = btn.querySelector('.toggle-icon');
+  if (el.classList.contains('open')) {
+    el.classList.remove('open');
+    icon.textContent = '▶';
+    btn.childNodes[1].textContent = ' Показать ответ';
+  } else {
+    el.classList.add('open');
+    icon.textContent = '▼';
+    btn.childNodes[1].textContent = ' Скрыть ответ';
+  }
+}
+</script>
+{% endblock %}
